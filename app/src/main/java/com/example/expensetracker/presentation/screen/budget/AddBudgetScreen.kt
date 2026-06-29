@@ -1,6 +1,9 @@
 package com.example.expensetracker.presentation.screen.budget
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -8,15 +11,19 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -28,12 +35,14 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -44,18 +53,18 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.navigation.NavController
 import com.example.expensetracker.domain.model.BudgetPeriod
 import com.example.expensetracker.domain.model.ExpenseCategory
 import com.example.expensetracker.presentation.viewmodel.BudgetViewModel
 import kotlinx.coroutines.launch
 import java.time.LocalDateTime
-import java.time.format.DateTimeFormatter
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -67,7 +76,6 @@ fun AddBudgetScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
 
-    // Form state
     var category by remember { mutableStateOf(ExpenseCategory.FOOD) }
     var amount by remember { mutableStateOf("") }
     var period by remember { mutableStateOf(BudgetPeriod.MONTHLY) }
@@ -75,11 +83,11 @@ fun AddBudgetScreen(
     var notificationEnabled by remember { mutableStateOf(false) }
     var alertThreshold by remember { mutableStateOf("80") }
 
-    // Handle success/error messages
     LaunchedEffect(uiState.successMessage, uiState.error) {
         uiState.successMessage?.let { message ->
             snackbarHostState.showSnackbar(message)
             viewModel.clearMessages()
+            onBack()
         }
 
         uiState.error?.let { error ->
@@ -91,12 +99,15 @@ fun AddBudgetScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Add Budget") },
+                title = { Text("Add Budget Limit", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "Back")
                     }
-                }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Color.Transparent
+                )
             )
         },
         snackbarHost = { SnackbarHost(snackbarHostState) }
@@ -105,13 +116,14 @@ fun AddBudgetScreen(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
+                    .background(MaterialTheme.colorScheme.background)
                     .padding(innerPadding),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
             ) {
                 CircularProgressIndicator()
                 Spacer(modifier = Modifier.height(16.dp))
-                Text("Creating budget...")
+                Text("Creating budget...", color = MaterialTheme.colorScheme.onBackground)
             }
         } else {
             AddBudgetForm(
@@ -173,16 +185,17 @@ fun AddBudgetForm(
 ) {
     Column(
         modifier = modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
             .padding(16.dp)
-            .verticalScroll(rememberScrollState())
+            .verticalScroll(rememberScrollState()),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         // Category Selection
         CategorySelectionCard(
             selectedCategory = category,
             onCategorySelected = onCategoryChange
         )
-
-        Spacer(modifier = Modifier.height(16.dp))
 
         // Budget Details
         BudgetDetailsCard(
@@ -194,8 +207,6 @@ fun AddBudgetForm(
             onActiveChange = onActiveChange
         )
 
-        Spacer(modifier = Modifier.height(16.dp))
-
         // Notifications
         NotificationsCard(
             notificationEnabled = notificationEnabled,
@@ -204,16 +215,29 @@ fun AddBudgetForm(
             onAlertThresholdChange = onAlertThresholdChange
         )
 
-        Spacer(modifier = Modifier.height(32.dp))
+        Spacer(modifier = Modifier.height(8.dp))
 
         // Submit Button
         Button(
             onClick = onSubmit,
-            modifier = Modifier.fillMaxWidth(),
-            enabled = amount.isNotBlank() && amount.toDoubleOrNull() != null && amount.toDouble() > 0
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(56.dp),
+            shape = RoundedCornerShape(16.dp),
+            enabled = amount.isNotBlank() && amount.toDoubleOrNull() != null && amount.toDouble() > 0,
+            colors = ButtonDefaults.buttonColors(
+                containerColor = MaterialTheme.colorScheme.primary
+            )
         ) {
-            Text("Create Budget")
+            Text(
+                text = "Create Budget",
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onPrimary
+            )
         }
+        
+        Spacer(modifier = Modifier.height(16.dp))
     }
 }
 
@@ -223,8 +247,16 @@ fun CategorySelectionCard(
     onCategorySelected: (ExpenseCategory) -> Unit
 ) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(4.dp)
+        modifier = Modifier
+            .fillMaxWidth()
+            .border(
+                width = 0.5.dp,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f),
+                shape = RoundedCornerShape(20.dp)
+            ),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(2.dp)
     ) {
         Column(
             modifier = Modifier.padding(16.dp)
@@ -232,22 +264,21 @@ fun CategorySelectionCard(
             Text(
                 text = "Category",
                 style = MaterialTheme.typography.titleMedium,
-                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
             )
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(4),
+            LazyRow(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.height(180.dp)
+                modifier = Modifier.fillMaxWidth()
             ) {
-                items(ExpenseCategory.entries.toTypedArray()) { category ->
+                items(ExpenseCategory.entries.toTypedArray()) { cat ->
                     CategoryChip(
-                        category = category,
-                        isSelected = selectedCategory == category,
-                        onSelected = { onCategorySelected(category) }
+                        category = cat,
+                        isSelected = selectedCategory == cat,
+                        onSelected = { onCategorySelected(cat) }
                     )
                 }
             }
@@ -265,21 +296,28 @@ fun BudgetDetailsCard(
     onActiveChange: (Boolean) -> Unit
 ) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(4.dp)
+        modifier = Modifier
+            .fillMaxWidth()
+            .border(
+                width = 0.5.dp,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f),
+                shape = RoundedCornerShape(20.dp)
+            ),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(2.dp)
     ) {
         Column(
-            modifier = Modifier.padding(16.dp)
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             Text(
-                text = "Budget Details",
+                text = "Limit Details",
                 style = MaterialTheme.typography.titleMedium,
-                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
             )
 
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Amount
             OutlinedTextField(
                 value = amount,
                 onValueChange = { newValue ->
@@ -287,30 +325,48 @@ fun BudgetDetailsCard(
                         onAmountChange(newValue)
                     }
                 },
-                label = { Text("Budget Amount") },
+                label = { Text("Budget Limit") },
+                placeholder = { Text("0.00") },
                 modifier = Modifier.fillMaxWidth(),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                prefix = { Text("$") },
-                singleLine = true
+                prefix = {
+                    Text(
+                        text = "$",
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.Bold
+                    )
+                },
+                singleLine = true,
+                shape = RoundedCornerShape(14.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                    unfocusedBorderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)
+                )
             )
 
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Period
             PeriodDropdown(
                 selectedPeriod = period,
                 onPeriodSelected = onPeriodChange
             )
 
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Active Status
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text("Active Budget")
+                Column {
+                    Text(
+                        text = "Active Limitation",
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = "Apply budget limits to active tracking",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
                 Switch(
                     checked = isActive,
                     onCheckedChange = onActiveChange
@@ -328,8 +384,16 @@ fun NotificationsCard(
     onAlertThresholdChange: (String) -> Unit
 ) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(4.dp)
+        modifier = Modifier
+            .fillMaxWidth()
+            .border(
+                width = 0.5.dp,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f),
+                shape = RoundedCornerShape(20.dp)
+            ),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(2.dp)
     ) {
         Column(
             modifier = Modifier.padding(16.dp)
@@ -337,18 +401,30 @@ fun NotificationsCard(
             Text(
                 text = "Notifications",
                 style = MaterialTheme.typography.titleMedium,
-                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
             )
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Notification Toggle
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text("Enable Notifications")
+                Column {
+                    Text(
+                        text = "Threshold Alerts",
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = "Notify when budget usage reaches limits",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
                 Switch(
                     checked = notificationEnabled,
                     onCheckedChange = onNotificationEnabledChange
@@ -370,8 +446,13 @@ fun NotificationsCard(
                     suffix = { Text("%") },
                     singleLine = true,
                     supportingText = {
-                        Text("Receive alerts when budget usage reaches this percentage")
-                    }
+                        Text("Receive warning notifications at this percentage")
+                    },
+                    shape = RoundedCornerShape(14.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                        unfocusedBorderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)
+                    )
                 )
             }
         }
@@ -398,7 +479,12 @@ fun PeriodDropdown(
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
             modifier = Modifier
                 .fillMaxWidth()
-                .menuAnchor()
+                .menuAnchor(),
+            shape = RoundedCornerShape(14.dp),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = MaterialTheme.colorScheme.primary,
+                unfocusedBorderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)
+            )
         )
 
         ExposedDropdownMenu(
@@ -430,60 +516,33 @@ fun CategoryChip(
     isSelected: Boolean,
     onSelected: () -> Unit
 ) {
-    val containerColor = if (isSelected) {
-        Color(category.color)
-    } else {
-        MaterialTheme.colorScheme.surfaceVariant
-    }
-
-    val contentColor = if (isSelected) {
-        MaterialTheme.colorScheme.onPrimary
-    } else {
-        MaterialTheme.colorScheme.onSurfaceVariant
-    }
-
+    val tintColor = Color(category.color)
     Card(
         modifier = Modifier
-            .padding(2.dp),
-        onClick = onSelected,
-        colors = CardDefaults.cardColors(containerColor = containerColor),
-        elevation = CardDefaults.cardElevation(
-            defaultElevation = if (isSelected) 8.dp else 2.dp
-        )
+            .border(
+                width = if (isSelected) 1.5.dp else 0.5.dp,
+                color = if (isSelected) tintColor else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f),
+                shape = RoundedCornerShape(20.dp)
+            ),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = if (isSelected) tintColor.copy(alpha = 0.15f) else MaterialTheme.colorScheme.surface
+        ),
+        onClick = onSelected
     ) {
-        Column(
-            modifier = Modifier.padding(8.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
+        Row(
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                text = getCategoryIcon(category),
-                fontSize = 18.sp
-            )
-            Spacer(modifier = Modifier.height(4.dp))
+            Text(category.iconRes, fontSize = 16.sp)
+            Spacer(modifier = Modifier.width(8.dp))
             Text(
                 text = category.displayName,
-                style = MaterialTheme.typography.labelSmall,
-                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                maxLines = 2,
-                color = contentColor
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                color = if (isSelected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
-    }
-}
-
-// Helper functions
-private fun getCategoryIcon(category: ExpenseCategory): String {
-    return when (category) {
-        ExpenseCategory.FOOD -> "🍔"
-        ExpenseCategory.TRANSPORT -> "🚗"
-        ExpenseCategory.ENTERTAINMENT -> "🎬"
-        ExpenseCategory.SHOPPING -> "🛍️"
-        ExpenseCategory.HEALTH -> "🏥"
-        ExpenseCategory.BILLS -> "💡"
-        ExpenseCategory.EDUCATION -> "📚"
-        ExpenseCategory.OTHER -> "✈️"
-        else -> "💰"
     }
 }
 

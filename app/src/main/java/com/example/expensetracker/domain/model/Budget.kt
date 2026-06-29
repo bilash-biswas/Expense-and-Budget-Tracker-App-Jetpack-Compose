@@ -8,7 +8,7 @@ data class Budget(
     val amount: Double,
     val period: BudgetPeriod,
     val startDate: LocalDateTime,
-    val endDate: LocalDateTime,
+    val endDate: LocalDateTime?,
     val isActive: Boolean,
     val notificationEnabled: Boolean = true,
     val alertThreshold: Double = 0.8

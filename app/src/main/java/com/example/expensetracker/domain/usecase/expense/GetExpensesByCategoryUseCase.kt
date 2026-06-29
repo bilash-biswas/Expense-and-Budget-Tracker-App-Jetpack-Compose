@@ -7,6 +7,6 @@ import com.example.expensetracker.domain.repository.ExpenseRepository
 class GetExpensesByCategoryUseCase(
     private val repository: ExpenseRepository
 ) {
-    suspend operator fun invoke(category: ExpenseCategory): List<Expense>? =
+    suspend operator fun invoke(category: ExpenseCategory): List<Expense> =
         repository.getExpensesByCategory(category)
 }

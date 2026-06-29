@@ -1,8 +1,9 @@
-// presentation/screen/BudgetScreen.kt
 package com.example.expensetracker.presentation.screen
 
 import android.util.Log
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -17,30 +18,41 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AttachMoney
 import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.NotificationsActive
+import androidx.compose.material.icons.filled.PieChart
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import com.example.expensetracker.presentation.component.BudgetListShimmer
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.expensetracker.domain.model.Budget
 import com.example.expensetracker.domain.model.Expense
@@ -48,6 +60,7 @@ import com.example.expensetracker.presentation.viewmodel.BudgetViewModel
 import com.example.expensetracker.presentation.viewmodel.ExpenseViewModel
 import java.time.format.DateTimeFormatter
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BudgetScreen(
     onNavigateToAddBudget: () -> Unit,
@@ -57,56 +70,73 @@ fun BudgetScreen(
 ) {
     val budgets by budgetViewModel.budgets.collectAsState()
     val uiState by budgetViewModel.uiState.collectAsState()
-
     val expenses by expenseViewModel.expenses.collectAsState()
-    val monthlyExpense by expenseViewModel.uiState.collectAsState()
 
-    Log.d("BudgetScreen", "Recomposing with budgets: $budgets")
-    Log.d("BudgetScreen", "Recomposing with expense: $expenses")
-    Log.d("BudgetScreen", "Recomposing with budgets: $uiState")
-    Log.d("BudgetScreen", "Recomposing with expense: $monthlyExpense")
-
-    LaunchedEffect(Unit) {
-        // Load any initial data if needed
-    }
-
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp)
-    ) {
-        BudgetHeaderSection(
-            totalBudgets = budgets.size,
-            activeBudgets = budgets.count { it.isActive }
-        )
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        // Budgets List
-        if (budgets.isEmpty()) {
-            EmptyBudgetsState()
-        } else {
-            BudgetsList(
-                budgets = budgets,
-                onBudgetClick = { budgetId ->
-                    onNavigateToEditBudget(budgetId)
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Budgets Plan", fontWeight = FontWeight.Bold) },
+                actions = {
+                    IconButton(onClick = onNavigateToAddBudget) {
+                        Icon(Icons.Default.Add, contentDescription = "Add Budget")
+                    }
                 },
-                addBudget = onNavigateToAddBudget,
-                expenses = expenses
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Color.Transparent
+                )
             )
         }
-    }
-
-    // Loading State
-    if (uiState.isLoading) {
-        Box(
+    ) { innerPadding ->
+        Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(16.dp),
-            contentAlignment = Alignment.Center
+                .background(MaterialTheme.colorScheme.background)
+                .padding(innerPadding)
+                .padding(16.dp)
         ) {
-            CircularProgressIndicator()
+            BudgetHeaderSection(
+                totalBudgets = budgets.size,
+                activeBudgets = budgets.count { it.isActive }
+            )
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            if (budgets.isEmpty()) {
+                EmptyBudgetsState(onAddBudget = onNavigateToAddBudget)
+            } else {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Active Limitations",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onBackground
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                LazyColumn(
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                    modifier = Modifier.weight(1f)
+                ) {
+                    items(budgets, key = { it.id }) { budget ->
+                        BudgetItem(
+                            budget = budget,
+                            onClick = { onNavigateToEditBudget(budget.id) },
+                            expenses = expenses
+                        )
+                    }
+                }
+            }
         }
+    }
+
+    if (uiState.isLoading) {
+        BudgetListShimmer()
     }
 }
 
@@ -116,101 +146,59 @@ fun BudgetHeaderSection(
     activeBudgets: Int
 ) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(4.dp)
+        modifier = Modifier
+            .fillMaxWidth()
+            .border(
+                width = 0.5.dp,
+                color = Color.White.copy(alpha = 0.2f),
+                shape = RoundedCornerShape(24.dp)
+            ),
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.Transparent),
+        elevation = CardDefaults.cardElevation(6.dp)
     ) {
-        Column(
-            modifier = Modifier.padding(16.dp)
-        ) {
-            Text(
-                text = "Budget Overview",
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                BudgetStatItem(
-                    title = "Total Budgets",
-                    value = totalBudgets.toString(),
-                    icon = Icons.Default.AttachMoney
-                )
-
-                BudgetStatItem(
-                    title = "Active",
-                    value = activeBudgets.toString(),
-                    icon = Icons.Default.Notifications
-                )
-            }
-        }
-    }
-}
-
-@Composable
-fun BudgetStatItem(
-    title: String,
-    value: String,
-    icon: ImageVector
-) {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = title,
-            modifier = Modifier.size(24.dp),
-            tint = MaterialTheme.colorScheme.primary
-        )
-        Spacer(modifier = Modifier.height(4.dp))
-        Text(
-            text = value,
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold
-        )
-        Text(
-            text = title,
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-    }
-}
-
-@Composable
-fun BudgetsList(
-    budgets: List<Budget>,
-    onBudgetClick: (Long) -> Unit,
-    addBudget: () -> Unit,
-    expenses: List<Expense>
-) {
-    Column {
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(
+                    Brush.linearGradient(
+                        colors = listOf(
+                            Color(0xFF7F56D9), // Electric violet
+                            Color(0xFF4A0E4E)  // Dark Purple
+                        )
+                    )
+                )
+                .padding(24.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                text = "Your Budgets",
-            )
-            Spacer(modifier = Modifier.weight(1f))
-            TextButton(
-                onClick = addBudget,
-            ) {
-                Text(text = "+ Add Budget")
+            Column {
+                Text(
+                    text = "BUDGET HEALTH",
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White.copy(alpha = 0.7f),
+                    letterSpacing = 1.sp
+                )
+                Text(
+                    text = "$activeBudgets of $totalBudgets Active",
+                    fontSize = 24.sp,
+                    fontWeight = FontWeight.Black,
+                    color = Color.White
+                )
             }
-        }
-
-        LazyColumn(
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            items(budgets, key = { it.id }) { budget ->
-                BudgetItem(
-                    budget = budget,
-                    onClick = { onBudgetClick(budget.id) },
-                    expenses = expenses
+            Box(
+                modifier = Modifier
+                    .size(56.dp)
+                    .clip(CircleShape)
+                    .background(Color.White.copy(alpha = 0.15f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.PieChart,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(28.dp)
                 )
             }
         }
@@ -223,33 +211,44 @@ fun BudgetItem(
     expenses: List<Expense>,
     onClick: () -> Unit
 ) {
+    val (spentAmount, progress) = calculateBudgetProgress(budget, expenses)
+    val remainingAmount = budget.amount - spentAmount
+    val isOverBudget = spentAmount > budget.amount
+
     Card(
-        modifier = Modifier.fillMaxWidth(),
-        onClick = onClick,
-        elevation = CardDefaults.cardElevation(2.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .border(
+                width = 0.5.dp,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f),
+                shape = RoundedCornerShape(20.dp)
+            )
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(1.dp)
     ) {
         Column(
-            modifier = Modifier.padding(16.dp)
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // Header Row
+            // Header: Icon + title + status
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Category and Status
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    // Category Icon
                     Box(
                         modifier = Modifier
-                            .size(40.dp)
+                            .size(44.dp)
                             .clip(CircleShape)
-                            .background(Color(budget.category.color)),
+                            .background(Color(budget.category.color).copy(alpha = 0.15f)),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
                             text = budget.category.iconRes,
-                            style = MaterialTheme.typography.bodyMedium
+                            fontSize = 20.sp
                         )
                     }
 
@@ -259,7 +258,8 @@ fun BudgetItem(
                         Text(
                             text = budget.category.displayName,
                             style = MaterialTheme.typography.bodyLarge,
-                            fontWeight = FontWeight.Medium
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
                             text = budget.period.name.lowercase().replaceFirstChar { it.uppercase() },
@@ -269,163 +269,184 @@ fun BudgetItem(
                     }
                 }
 
-                // Status Badge
                 BudgetStatusBadge(isActive = budget.isActive)
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
+            // Spending and Progress Information
+            Column(
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Spent $${"%.2f".format(spentAmount)} of $${"%.2f".format(budget.amount)}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = "${(progress * 100).toInt()}%",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Black,
+                        color = if (isOverBudget) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
+                    )
+                }
 
-            // Amount and Progress - NOW WITH REAL DATA!
-            BudgetProgressSection(
-                budget = budget,
-                expenses = expenses
-            )
+                LinearProgressIndicator(
+                    progress = progress.coerceIn(0f, 1f),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(8.dp)
+                        .clip(RoundedCornerShape(4.dp)),
+                    color = when {
+                        isOverBudget -> MaterialTheme.colorScheme.error
+                        progress >= budget.alertThreshold -> Color(0xFFEF6C00) // Warning Orange
+                        else -> MaterialTheme.colorScheme.primary
+                    },
+                    trackColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)
+                )
 
-            Spacer(modifier = Modifier.height(8.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Remaining: $${"%.2f".format(remainingAmount.coerceAtLeast(0.0))}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = if (isOverBudget) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
 
-            // Dates and Notifications
-            BudgetMetaInfo(budget = budget)
+                    BudgetMetaInfo(budget = budget)
+                }
+
+                if (isOverBudget) {
+                    Text(
+                        text = "⚠️ Limit exceeded by $${"%.2f".format(-remainingAmount)}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.error,
+                        fontWeight = FontWeight.Bold
+                    )
+                } else if (progress >= budget.alertThreshold) {
+                    Text(
+                        text = "🔔 Nearing budget limit warnings",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color(0xFFEF6C00),
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
         }
     }
 }
 
 @Composable
 fun BudgetStatusBadge(isActive: Boolean) {
-    val backgroundColor = if (isActive) {
-        MaterialTheme.colorScheme.primaryContainer
+    val containerColor = if (isActive) {
+        MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
     } else {
-        MaterialTheme.colorScheme.surfaceVariant
+        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)
     }
 
     val textColor = if (isActive) {
-        MaterialTheme.colorScheme.onPrimaryContainer
+        MaterialTheme.colorScheme.primary
     } else {
         MaterialTheme.colorScheme.onSurfaceVariant
     }
 
     Box(
         modifier = Modifier
-            .clip(MaterialTheme.shapes.small)
-            .background(backgroundColor)
-            .padding(horizontal = 8.dp, vertical = 4.dp)
+            .clip(RoundedCornerShape(10.dp))
+            .background(containerColor)
+            .padding(horizontal = 10.dp, vertical = 4.dp)
     ) {
         Text(
-            text = if (isActive) "Active" else "Inactive",
+            text = if (isActive) "Active" else "Ended",
             style = MaterialTheme.typography.labelSmall,
             color = textColor,
-            fontWeight = FontWeight.Medium
+            fontWeight = FontWeight.Bold
         )
     }
 }
 
 @Composable
-fun BudgetProgressSection(
-    budget: Budget,
-    expenses: List<Expense> = emptyList()
-) {
-    // Calculate actual spending for this budget's category and period
-    val (spentAmount, progress) = calculateBudgetProgress(budget, expenses)
-    val remainingAmount = budget.amount - spentAmount
-    val isOverBudget = spentAmount > budget.amount
-
-    val progressColor = when {
-        isOverBudget -> MaterialTheme.colorScheme.error
-        progress >= budget.alertThreshold -> MaterialTheme.colorScheme.primary
-        else -> MaterialTheme.colorScheme.primary
-    }
-
-    Column {
-        // Amount Row
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Text(
-                text = "Budget: $${"%.2f".format(budget.amount)}",
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Medium
-            )
-            Text(
-                text = "Spent: $${"%.2f".format(spentAmount)}",
-                style = MaterialTheme.typography.bodyMedium,
-                color = if (isOverBudget) MaterialTheme.colorScheme.error
-                else MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        // Progress Bar
-        LinearProgressIndicator(
-            progress = progress.coerceAtMost(1f), // Cap at 100% for display
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(8.dp),
-            color = progressColor,
-            trackColor = MaterialTheme.colorScheme.surfaceVariant
+fun BudgetMetaInfo(budget: Budget) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Text(
+            text = "${budget.startDate.format(DateTimeFormatter.ofPattern("MMM dd"))} - ${budget.endDate?.format(DateTimeFormatter.ofPattern("MMM dd")) ?: "Ongoing"}",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
-
-        Spacer(modifier = Modifier.height(4.dp))
-
-        // Progress Text
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Text(
-                text = "Remaining: $${"%.2f".format(remainingAmount.coerceAtLeast(0.0))}",
-                style = MaterialTheme.typography.labelSmall,
-                color = if (isOverBudget) MaterialTheme.colorScheme.error
-                else MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Text(
-                text = "${(progress * 100).toInt()}%",
-                style = MaterialTheme.typography.labelSmall,
-                color = if (isOverBudget) MaterialTheme.colorScheme.error
-                else MaterialTheme.colorScheme.onSurfaceVariant,
-                fontWeight = FontWeight.Medium
-            )
-        }
-
-        // Alert message if over budget or near threshold
-        if (isOverBudget) {
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = "⚠️ Over budget by $${"%.2f".format(-remainingAmount)}",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.error,
-                fontWeight = FontWeight.Medium
-            )
-        } else if (progress >= budget.alertThreshold) {
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = "🔔 Approaching budget limit",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.primary,
-                fontWeight = FontWeight.Medium
+        if (budget.notificationEnabled) {
+            Icon(
+                imageVector = Icons.Default.NotificationsActive,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(12.dp)
             )
         }
     }
 }
 
-// Helper function to calculate budget progress
+@Composable
+fun EmptyBudgetsState(onAddBudget: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(32.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Icon(
+                imageVector = Icons.Default.AttachMoney,
+                contentDescription = null,
+                modifier = Modifier.size(64.dp),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(
+                text = "No Budgets Configured",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = "Setup category limits to control monthly outflows dynamically.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center
+            )
+            Spacer(modifier = Modifier.height(24.dp))
+            Button(
+                onClick = onAddBudget,
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+            ) {
+                Text("Create Budget", color = MaterialTheme.colorScheme.onPrimary)
+            }
+        }
+    }
+}
+
 private fun calculateBudgetProgress(
     budget: Budget,
     expenses: List<Expense>
 ): Pair<Double, Float> {
-    // Filter expenses for this budget's category and period
-
-    Log.e("expense", expenses.toString())
     val periodExpenses = expenses.filter { expense ->
         expense.category == budget.category && isExpenseInBudgetPeriod(expense, budget)
     }
-
-    // Calculate total spent amount
     val spentAmount = periodExpenses.sumOf { it.amount }
-
-    // Calculate progress percentage (capped for display)
     val progress = (spentAmount / budget.amount).toFloat()
-
     return Pair(spentAmount, progress)
 }
 
@@ -434,72 +455,5 @@ private fun isExpenseInBudgetPeriod(
     budget: Budget
 ): Boolean {
     return expense.date.isAfter(budget.startDate) &&
-            expense.date.isBefore(budget.endDate)
-}
-@Composable
-fun BudgetMetaInfo(budget: Budget) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        // Date Info
-        Column {
-            Text(
-                text = "From: ${budget.startDate.format(DateTimeFormatter.ofPattern("MMM dd"))}",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            budget.endDate?.let { endDate ->
-                Text(
-                    text = "To: ${endDate.format(DateTimeFormatter.ofPattern("MMM dd"))}",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        }
-
-        // Notification Indicator
-        if (budget.notificationEnabled) {
-            Icon(
-                imageVector = Icons.Default.Notifications,
-                contentDescription = "Notifications enabled",
-                modifier = Modifier.size(16.dp),
-                tint = MaterialTheme.colorScheme.primary
-            )
-        }
-    }
-}
-
-@Composable
-fun EmptyBudgetsState() {
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(32.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Icon(
-                imageVector = Icons.Default.AttachMoney,
-                contentDescription = "No budgets",
-                modifier = Modifier.size(64.dp),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Spacer(modifier = Modifier.height(16.dp))
-            Text(
-                text = "No Budgets Yet",
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = "Create your first budget to start tracking your spending",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = TextAlign.Center
-            )
-        }
-    }
+            (budget.endDate == null || expense.date.isBefore(budget.endDate))
 }

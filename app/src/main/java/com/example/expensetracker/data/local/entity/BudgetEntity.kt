@@ -29,7 +29,7 @@ fun BudgetEntity.toBudget(): Budget {
         amount = amount,
         period = BudgetPeriod.valueOf(period),
         startDate = LocalDateTime.parse(startDate, DateTimeFormatter.ISO_LOCAL_DATE_TIME),
-        endDate = endDate.let { LocalDateTime.parse(it, DateTimeFormatter.ISO_LOCAL_DATE_TIME) },
+        endDate = endDate?.let { LocalDateTime.parse(it, DateTimeFormatter.ISO_LOCAL_DATE_TIME) },
         isActive = isActive,
         notificationEnabled = notificationEnabled,
         alertThreshold = alertThreshold
@@ -43,7 +43,7 @@ fun Budget.toEntity(): BudgetEntity {
         amount = amount,
         period = period.name,
         startDate = startDate.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME),
-        endDate = endDate.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME),
+        endDate = endDate?.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME),
         isActive = isActive,
         notificationEnabled = notificationEnabled,
         alertThreshold = alertThreshold

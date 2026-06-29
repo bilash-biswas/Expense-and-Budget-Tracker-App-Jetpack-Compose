@@ -7,6 +7,6 @@ import java.time.LocalDateTime
 class GetExpensesByDateRangeUseCase(
     private val repository: ExpenseRepository
 ) {
-    suspend operator fun invoke(start: LocalDateTime, end: LocalDateTime): List<Expense>? =
+    suspend operator fun invoke(start: LocalDateTime, end: LocalDateTime): List<Expense> =
         repository.getExpensesByDateRange(start, end)
 }

@@ -10,6 +10,9 @@ import com.example.expensetracker.presentation.screen.BudgetScreen
 import com.example.expensetracker.presentation.screen.DashboardScreen
 import com.example.expensetracker.presentation.screen.MoreScreen
 import com.example.expensetracker.presentation.screen.SettingsScreen
+import com.example.expensetracker.presentation.screen.SplashScreen
+import com.example.expensetracker.presentation.screen.OnboardingScreen
+import com.example.expensetracker.presentation.screen.auth.UnlockScreen
 import com.example.expensetracker.presentation.screen.budget.AddBudgetScreen
 import com.example.expensetracker.presentation.screen.budget.EditBudgetScreen
 import com.example.expensetracker.presentation.screen.category.CategoryManagementScreen
@@ -26,9 +29,52 @@ fun NavigationHost(
 ) {
     NavHost(
         navController = navController,
-        startDestination = BottomNavItem.Expenses.route, // Start with Expenses as main screen
+        startDestination = "splash",
         modifier = modifier
     ) {
+        // Splash Screen
+        composable("splash") {
+            SplashScreen(
+                onNavigateToOnboarding = {
+                    navController.navigate("onboarding") {
+                        popUpTo("splash") { inclusive = true }
+                    }
+                },
+                onNavigateToMain = {
+                    navController.navigate(BottomNavItem.Expenses.route) {
+                        popUpTo("splash") { inclusive = true }
+                    }
+                },
+                onNavigateToUnlock = {
+                    navController.navigate("unlock") {
+                        popUpTo("splash") { inclusive = true }
+                    }
+                }
+            )
+        }
+
+        // Unlock Screen
+        composable("unlock") {
+            UnlockScreen(
+                onUnlockSuccess = {
+                    navController.navigate(BottomNavItem.Expenses.route) {
+                        popUpTo("unlock") { inclusive = true }
+                    }
+                }
+            )
+        }
+
+        // Onboarding Screen
+        composable("onboarding") {
+            OnboardingScreen(
+                onFinish = {
+                    navController.navigate(BottomNavItem.Expenses.route) {
+                        popUpTo("onboarding") { inclusive = true }
+                    }
+                }
+            )
+        }
+
         // Dashboard Screen
         composable(BottomNavItem.Dashboard.route) {
             DashboardScreen(

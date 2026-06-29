@@ -50,13 +50,13 @@ interface BudgetDao {
                    FROM expenses e 
                    WHERE e.category = b.category 
                    AND e.date BETWEEN 
-                       CASE b.period 
+                       CAST(strftime('%s', CASE b.period 
                            WHEN 'WEEKLY' THEN datetime('now', 'weekday 0', '-6 days')
                            WHEN 'MONTHLY' THEN datetime('now', 'start of month')
                            WHEN 'QUARTERLY' THEN datetime('now', 'start of month', '-' || ((strftime('%m', 'now') - 1) % 3) || ' months')
                            WHEN 'YEARLY' THEN datetime('now', 'start of year')
-                       END 
-                   AND datetime('now')
+                       END) AS INTEGER) * 1000
+                   AND CAST(strftime('%s', 'now') AS INTEGER) * 1000
                ), 0) as currentSpending
         FROM budgets b
         WHERE b.isActive = 1
@@ -73,13 +73,13 @@ interface BudgetDao {
                    FROM expenses e 
                    WHERE e.category = b.category 
                    AND e.date BETWEEN 
-                       CASE b.period 
+                       CAST(strftime('%s', CASE b.period 
                            WHEN 'WEEKLY' THEN datetime('now', 'weekday 0', '-6 days')
                            WHEN 'MONTHLY' THEN datetime('now', 'start of month')
                            WHEN 'QUARTERLY' THEN datetime('now', 'start of month', '-' || ((strftime('%m', 'now') - 1) % 3) || ' months')
                            WHEN 'YEARLY' THEN datetime('now', 'start of year')
-                       END 
-                   AND datetime('now')
+                       END) AS INTEGER) * 1000
+                   AND CAST(strftime('%s', 'now') AS INTEGER) * 1000
                ), 0) as spentAmount
         FROM budgets b
         WHERE b.isActive = 1

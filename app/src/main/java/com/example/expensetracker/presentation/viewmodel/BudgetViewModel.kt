@@ -79,7 +79,7 @@ class BudgetViewModel @Inject constructor(
                     amount = amount,
                     period = period,
                     startDate = startDate,
-                    endDate = endDate!!,
+                    endDate = endDate,
                     isActive = isActive,
                     notificationEnabled = notificationEnabled,
                     alertThreshold = alertThreshold
@@ -122,7 +122,7 @@ class BudgetViewModel @Inject constructor(
                     amount = amount,
                     period = period,
                     startDate = startDate,
-                    endDate = endDate!!,
+                    endDate = endDate,
                     isActive = isActive,
                     notificationEnabled = notificationEnabled,
                     alertThreshold = alertThreshold

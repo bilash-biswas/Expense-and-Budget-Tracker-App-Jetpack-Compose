@@ -1,6 +1,9 @@
 package com.example.expensetracker.presentation.screen.expense
 
 import android.util.Log
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -12,10 +15,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -24,9 +27,9 @@ import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -34,11 +37,13 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -51,9 +56,12 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.expensetracker.domain.model.Expense
 import com.example.expensetracker.domain.model.ExpenseCategory
@@ -68,18 +76,15 @@ import java.time.format.DateTimeFormatter
 @Composable
 fun EditExpenseScreen(
     expenseId: Long,
-    onBack: () -> Unit, // Changed from NavController to callback
+    onBack: () -> Unit,
     viewModel: ExpenseViewModel = hiltViewModel()
 ) {
     val expenses by viewModel.expenses.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
 
-    // Find the expense from the list
     val expense = viewModel.getExpenseById(expenseId)
-    Log.d("EditExpenseScreen", "Expense: $expense")
 
-    // State for form fields
     var title by rememberSaveable { mutableStateOf("") }
     var amount by rememberSaveable { mutableStateOf("") }
     var selectedCategory by rememberSaveable { mutableStateOf(ExpenseCategory.FOOD) }
@@ -91,85 +96,108 @@ fun EditExpenseScreen(
     var showDeleteDialog by remember { mutableStateOf(false) }
     var showDatePicker by remember { mutableStateOf(false) }
 
-    // Show error message if expense not found
     LaunchedEffect(expense) {
         if (expense != null) {
             title = expense.title
             amount = expense.amount.toString()
             selectedCategory = expense.category
-            notes = expense.notes
+            notes = expense.notes ?: ""
             date = expense.date
             isRecurring = expense.isRecurring
             recurrenceType = expense.recurrenceType ?: RecurrenceType.MONTHLY
         }
     }
 
-
     if (expense == null && expenseId != 0L) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
+                .background(MaterialTheme.colorScheme.background)
                 .padding(16.dp),
             contentAlignment = Alignment.Center
         ) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 CircularProgressIndicator()
                 Spacer(modifier = Modifier.height(16.dp))
-                Text("Loading expense...")
+                Text("Loading expense...", color = MaterialTheme.colorScheme.onBackground)
             }
         }
     } else if (expense != null) {
-        EditExpenseContent(
-            expense = expense,
-            title = title,
-            onTitleChange = { title = it },
-            amount = amount,
-            onAmountChange = { amount = it },
-            selectedCategory = selectedCategory,
-            onCategoryChange = { selectedCategory = it },
-            notes = notes,
-            onNotesChange = { notes = it },
-            date = date,
-            onDateChange = { date = it },
-            isRecurring = isRecurring,
-            onRecurringChange = { isRecurring = it },
-            recurrenceType = recurrenceType,
-            onRecurrenceTypeChange = { recurrenceType = it },
-            onUpdateExpense = { updatedExpense ->
-                coroutineScope.launch {
-                    viewModel.updateExpense(updatedExpense)
-                    snackbarHostState.showSnackbar("Expense updated successfully")
-                    onBack() // Use callback instead of navController.popBackStack()
-                }
+        Scaffold(
+            topBar = {
+                TopAppBar(
+                    title = { Text("Edit Expense", fontWeight = FontWeight.Bold) },
+                    navigationIcon = {
+                        IconButton(onClick = onBack) {
+                            Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        }
+                    },
+                    actions = {
+                        IconButton(onClick = { showDeleteDialog = true }) {
+                            Icon(
+                                imageVector = Icons.Default.Delete,
+                                contentDescription = "Delete Expense",
+                                tint = MaterialTheme.colorScheme.error
+                            )
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = Color.Transparent
+                    )
+                )
             },
-            onDeleteExpense = { expenseToDelete ->
-                coroutineScope.launch {
-                    viewModel.deleteExpense(expenseToDelete)
-                    snackbarHostState.showSnackbar("Expense deleted successfully")
-                    onBack() // Use callback instead of navController.popBackStack()
-                }
-            },
-            showDeleteDialog = showDeleteDialog,
-            onShowDeleteDialogChange = { showDeleteDialog = it },
-            showDatePicker = showDatePicker,
-            onShowDatePickerChange = { showDatePicker = it },
-            modifier = Modifier.padding(4.dp)
-        )
+            snackbarHost = { SnackbarHost(snackbarHostState) }
+        ) { innerPadding ->
+            EditExpenseContent(
+                expense = expense,
+                title = title,
+                onTitleChange = { title = it },
+                amount = amount,
+                onAmountChange = { amount = it },
+                selectedCategory = selectedCategory,
+                onCategoryChange = { selectedCategory = it },
+                notes = notes,
+                onNotesChange = { notes = it },
+                date = date,
+                onDateChange = { date = it },
+                isRecurring = isRecurring,
+                onRecurringChange = { isRecurring = it },
+                recurrenceType = recurrenceType,
+                onRecurrenceTypeChange = { recurrenceType = it },
+                onUpdateExpense = { updatedExpense ->
+                    coroutineScope.launch {
+                        viewModel.updateExpense(updatedExpense)
+                        snackbarHostState.showSnackbar("Expense updated successfully")
+                        onBack()
+                    }
+                },
+                onDeleteExpense = { expenseToDelete ->
+                    coroutineScope.launch {
+                        viewModel.deleteExpense(expenseToDelete)
+                        snackbarHostState.showSnackbar("Expense deleted successfully")
+                        onBack()
+                    }
+                },
+                showDeleteDialog = showDeleteDialog,
+                onShowDeleteDialogChange = { showDeleteDialog = it },
+                showDatePicker = showDatePicker,
+                onShowDatePickerChange = { showDatePicker = it },
+                modifier = Modifier.padding(innerPadding)
+            )
+        }
     } else {
         Box(
             modifier = Modifier
                 .fillMaxSize()
+                .background(MaterialTheme.colorScheme.background)
                 .padding(16.dp),
             contentAlignment = Alignment.Center
         ) {
-            Text("Expense not found")
+            Text("Expense not found", color = MaterialTheme.colorScheme.onBackground)
         }
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EditExpenseContent(
     expense: Expense,
@@ -198,39 +226,47 @@ fun EditExpenseContent(
     Column(
         modifier = modifier
             .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
             .padding(16.dp)
-            .verticalScroll(rememberScrollState())
+            .verticalScroll(rememberScrollState()),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        // Basic Information Card
-        Text("Edit Expense", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-        Spacer(modifier = Modifier.height(8.dp))
         Card(
-            modifier = Modifier.fillMaxWidth(),
-            elevation = CardDefaults.cardElevation(4.dp)
+            modifier = Modifier
+                .fillMaxWidth()
+                .border(
+                    width = 0.5.dp,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f),
+                    shape = RoundedCornerShape(20.dp)
+                ),
+            shape = RoundedCornerShape(20.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            elevation = CardDefaults.cardElevation(2.dp)
         ) {
             Column(
-                modifier = Modifier.padding(16.dp)
+                modifier = Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 Text(
-                    text = "Expense Details",
+                    text = "Transaction Details",
                     style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
                 )
 
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Title
                 OutlinedTextField(
                     value = title,
                     onValueChange = onTitleChange,
                     label = { Text("Title") },
                     modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
+                    singleLine = true,
+                    shape = RoundedCornerShape(14.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                        unfocusedBorderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)
+                    )
                 )
 
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Amount
                 OutlinedTextField(
                     value = amount,
                     onValueChange = { newValue ->
@@ -245,33 +281,41 @@ fun EditExpenseContent(
                     prefix = {
                         Text(
                             text = "$",
-                            style = MaterialTheme.typography.bodyLarge
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = FontWeight.Bold
                         )
-                    }
+                    },
+                    shape = RoundedCornerShape(14.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                        unfocusedBorderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)
+                    )
                 )
 
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Date Picker
                 OutlinedButton(
                     onClick = { onShowDatePickerChange(true) },
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(14.dp)
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.CalendarMonth,
-                        contentDescription = "Select Date",
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = date.format(DateTimeFormatter.ofPattern("MMM dd, yyyy HH:mm")),
-                        style = MaterialTheme.typography.bodyMedium
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.CalendarMonth,
+                            contentDescription = "Select Date",
+                            modifier = Modifier.size(18.dp),
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = date.format(DateTimeFormatter.ofPattern("MMM dd, yyyy  HH:mm")),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Notes
                 OutlinedTextField(
                     value = notes,
                     onValueChange = onNotesChange,
@@ -279,17 +323,28 @@ fun EditExpenseContent(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(100.dp),
-                    maxLines = 3
+                    maxLines = 3,
+                    shape = RoundedCornerShape(14.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                        unfocusedBorderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)
+                    )
                 )
             }
         }
 
-        Spacer(modifier = Modifier.height(24.dp))
-
-        // Category Selection Card
+        // Category selection
         Card(
-            modifier = Modifier.fillMaxWidth(),
-            elevation = CardDefaults.cardElevation(4.dp)
+            modifier = Modifier
+                .fillMaxWidth()
+                .border(
+                    width = 0.5.dp,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f),
+                    shape = RoundedCornerShape(20.dp)
+                ),
+            shape = RoundedCornerShape(20.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            elevation = CardDefaults.cardElevation(2.dp)
         ) {
             Column(
                 modifier = Modifier.padding(16.dp)
@@ -297,16 +352,15 @@ fun EditExpenseContent(
                 Text(
                     text = "Category",
                     style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
                 )
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                LazyVerticalGrid(
-                    columns = GridCells.Fixed(4),
-                    modifier = Modifier.height(170.dp),
+                LazyRow(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                    modifier = Modifier.fillMaxWidth()
                 ) {
                     items(ExpenseCategory.entries.toTypedArray()) { category ->
                         CategoryChip(
@@ -319,26 +373,41 @@ fun EditExpenseContent(
             }
         }
 
-        Spacer(modifier = Modifier.height(24.dp))
-
-        // Recurrence Settings Card
+        // Recurrence Settings
         Card(
-            modifier = Modifier.fillMaxWidth(),
-            elevation = CardDefaults.cardElevation(4.dp)
+            modifier = Modifier
+                .fillMaxWidth()
+                .border(
+                    width = 0.5.dp,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f),
+                    shape = RoundedCornerShape(20.dp)
+                ),
+            shape = RoundedCornerShape(20.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            elevation = CardDefaults.cardElevation(2.dp)
         ) {
             Column(
-                modifier = Modifier.padding(16.dp)
+                modifier = Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        text = "Recurring Expense",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
+                    Column {
+                        Text(
+                            text = "Recurring Transaction",
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            text = "Automate repeated payments",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                     Switch(
                         checked = isRecurring,
                         onCheckedChange = onRecurringChange
@@ -346,7 +415,6 @@ fun EditExpenseContent(
                 }
 
                 if (isRecurring) {
-                    Spacer(modifier = Modifier.height(16.dp))
                     RecurrenceSelector(
                         selectedRecurrence = recurrenceType,
                         onRecurrenceSelected = onRecurrenceTypeChange
@@ -355,53 +423,45 @@ fun EditExpenseContent(
             }
         }
 
-        Spacer(modifier = Modifier.height(32.dp))
+        Spacer(modifier = Modifier.height(8.dp))
 
-        // Action Buttons
-        Column(
-            modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+        // Save Button
+        Button(
+            onClick = {
+                val amountValue = amount.toDoubleOrNull() ?: 0.0
+                if (title.isNotBlank() && amountValue > 0) {
+                    val updatedExpense = expense.copy(
+                        title = title.trim(),
+                        amount = amountValue,
+                        category = selectedCategory,
+                        notes = notes.trim(),
+                        date = date,
+                        isRecurring = isRecurring,
+                        recurrenceType = if (isRecurring) recurrenceType else null
+                    )
+                    onUpdateExpense(updatedExpense)
+                }
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(56.dp),
+            shape = RoundedCornerShape(16.dp),
+            enabled = title.isNotBlank() && (amount.toDoubleOrNull() ?: 0.0) > 0,
+            colors = ButtonDefaults.buttonColors(
+                containerColor = MaterialTheme.colorScheme.primary
+            )
         ) {
-            Button(
-                onClick = {
-                    val amountValue = amount.toDoubleOrNull() ?: 0.0
-                    if (title.isNotBlank() && amountValue > 0) {
-                        val updatedExpense = expense.copy(
-                            title = title,
-                            amount = amountValue,
-                            category = selectedCategory,
-                            notes = notes,
-                            date = date,
-                            isRecurring = isRecurring,
-                            recurrenceType = if (isRecurring) recurrenceType else null
-                        )
-                        onUpdateExpense(updatedExpense)
-                    }
-                },
-                modifier = Modifier.fillMaxWidth(),
-                enabled = title.isNotBlank() && (amount.toDoubleOrNull() ?: 0.0) > 0
-            ) {
-                Text("Update Expense")
-            }
-
-            OutlinedButton(
-                onClick = { onShowDeleteDialogChange(true) },
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Delete,
-                    contentDescription = "Delete",
-                    modifier = Modifier.size(18.dp)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("Delete Expense")
-            }
+            Text(
+                text = "Save Changes",
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onPrimary
+            )
         }
 
         Spacer(modifier = Modifier.height(16.dp))
     }
 
-    // Simple Date Picker (you can enhance this with a proper date picker dialog)
     if (showDatePicker) {
         CustomDatePickerDialog(
             initialDateTime = date,
@@ -413,28 +473,24 @@ fun EditExpenseContent(
         )
     }
 
-    // Delete Confirmation Dialog
     if (showDeleteDialog) {
         AlertDialog(
             onDismissRequest = { onShowDeleteDialogChange(false) },
-            title = { Text("Delete Expense") },
-            text = {
-                Text("Are you sure you want to delete this expense? This action cannot be undone.")
-            },
+            title = { Text("Delete Transaction", fontWeight = FontWeight.Bold) },
+            text = { Text("Are you sure you want to delete this expense? This action is permanent and cannot be undone.") },
             confirmButton = {
                 Button(
                     onClick = {
                         onDeleteExpense(expense)
                         onShowDeleteDialogChange(false)
-                    }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
                 ) {
-                    Text("Delete")
+                    Text("Delete", color = MaterialTheme.colorScheme.onError)
                 }
             },
             dismissButton = {
-                OutlinedButton(
-                    onClick = { onShowDeleteDialogChange(false) }
-                ) {
+                OutlinedButton(onClick = { onShowDeleteDialogChange(false) }) {
                     Text("Cancel")
                 }
             }
@@ -451,45 +507,57 @@ fun RecurrenceSelector(
 ) {
     Column(modifier = modifier) {
         Text(
-            text = "Repeat",
-            style = MaterialTheme.typography.labelMedium
+            text = "Repeat Interval",
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
 
+        Spacer(modifier = Modifier.height(8.dp))
+
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 8.dp),
+            modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             RecurrenceType.entries.forEach { recurrence ->
+                val isSelected = selectedRecurrence == recurrence
+                val tintColor = MaterialTheme.colorScheme.primary
+                
                 Card(
                     onClick = { onRecurrenceSelected(recurrence) },
-                    modifier = Modifier.padding(2.dp),
+                    modifier = Modifier
+                        .weight(1f)
+                        .border(
+                            width = if (isSelected) 1.5.dp else 0.5.dp,
+                            color = if (isSelected) tintColor else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f),
+                            shape = RoundedCornerShape(12.dp)
+                        ),
+                    shape = RoundedCornerShape(12.dp),
                     colors = CardDefaults.cardColors(
-                        containerColor = if (selectedRecurrence == recurrence) {
-                            MaterialTheme.colorScheme.primaryContainer
-                        } else {
-                            MaterialTheme.colorScheme.surfaceVariant
-                        }
-                    )
+                        containerColor = if (isSelected) tintColor.copy(alpha = 0.12f) else MaterialTheme.colorScheme.surface
+                    ),
+                    elevation = CardDefaults.cardElevation(0.dp)
                 ) {
-                    Text(
-                        text = when (recurrence) {
-                            RecurrenceType.DAILY -> "Daily"
-                            RecurrenceType.WEEKLY -> "Weekly"
-                            RecurrenceType.MONTHLY -> "Monthly"
-                            RecurrenceType.YEARLY -> "Yearly"
-                        },
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                        style = MaterialTheme.typography.labelMedium
-                    )
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 12.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = when (recurrence) {
+                                RecurrenceType.DAILY -> "Daily"
+                                RecurrenceType.WEEKLY -> "Weekly"
+                                RecurrenceType.MONTHLY -> "Monthly"
+                                RecurrenceType.YEARLY -> "Yearly"
+                            },
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                            color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
             }
         }
     }
-}
-
-// Extension function for formatting LocalDateTime
-fun LocalDateTime.format(formatter: DateTimeFormatter): String {
-    return formatter.format(this)
 }

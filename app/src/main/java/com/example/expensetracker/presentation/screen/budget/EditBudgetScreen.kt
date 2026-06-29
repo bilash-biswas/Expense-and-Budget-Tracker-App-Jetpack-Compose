@@ -1,6 +1,8 @@
 package com.example.expensetracker.presentation.screen.budget
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -10,22 +12,26 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -36,9 +42,12 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.expensetracker.presentation.viewmodel.BudgetViewModel
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -54,19 +63,15 @@ fun EditBudgetScreen(
 
     var showDeleteDialog by remember { mutableStateOf(false) }
 
-    // Load budget when screen opens
     LaunchedEffect(budgetId) {
         viewModel.loadBudgetById(budgetId)
     }
 
-    // Handle success/error messages
     LaunchedEffect(uiState.successMessage, uiState.error) {
         uiState.successMessage?.let { message ->
             snackbarHostState.showSnackbar(message)
             viewModel.clearMessages()
-            if (message.contains("deleted")) {
-                onBack()
-            }
+            onBack()
         }
 
         uiState.error?.let { error ->
@@ -78,7 +83,7 @@ fun EditBudgetScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Edit Budget") },
+                title = { Text("Edit Budget Limit", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "Back")
@@ -89,9 +94,16 @@ fun EditBudgetScreen(
                         onClick = { showDeleteDialog = true },
                         enabled = currentBudget != null
                     ) {
-                        Icon(Icons.Default.Delete, contentDescription = "Delete Budget")
+                        Icon(
+                            imageVector = Icons.Default.Delete, 
+                            contentDescription = "Delete Budget",
+                            tint = MaterialTheme.colorScheme.error
+                        )
                     }
-                }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Color.Transparent
+                )
             )
         },
         snackbarHost = { SnackbarHost(snackbarHostState) }
@@ -100,23 +112,25 @@ fun EditBudgetScreen(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
+                    .background(MaterialTheme.colorScheme.background)
                     .padding(innerPadding),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
             ) {
                 CircularProgressIndicator()
                 Spacer(modifier = Modifier.height(16.dp))
-                Text("Loading budget...")
+                Text("Loading budget...", color = MaterialTheme.colorScheme.onBackground)
             }
         } else if (currentBudget == null) {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
+                    .background(MaterialTheme.colorScheme.background)
                     .padding(innerPadding),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
             ) {
-                Text("Budget not found")
+                Text("Budget not found", color = MaterialTheme.colorScheme.onBackground)
                 Spacer(modifier = Modifier.height(16.dp))
                 Button(onClick = onBack) {
                     Text("Go Back")
@@ -139,32 +153,31 @@ fun EditBudgetScreen(
                             alertThreshold = updatedBudget.alertThreshold
                         )
                     },
+                    onCancel = onBack,
                     isLoading = uiState.isLoading,
                     modifier = Modifier.padding(innerPadding)
                 )
             }
         }
 
-        // Delete Confirmation Dialog
         if (showDeleteDialog) {
             AlertDialog(
                 onDismissRequest = { showDeleteDialog = false },
-                title = { Text("Delete Budget") },
-                text = { Text("Are you sure you want to delete this budget? This action cannot be undone.") },
+                title = { Text("Delete Budget Limit", fontWeight = FontWeight.Bold) },
+                text = { Text("Are you sure you want to delete this budget limit? This action cannot be undone.") },
                 confirmButton = {
                     Button(
                         onClick = {
                             viewModel.deleteBudget(budgetId)
                             showDeleteDialog = false
-                        }
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
                     ) {
-                        Text("Delete")
+                        Text("Delete", color = MaterialTheme.colorScheme.onError)
                     }
                 },
                 dismissButton = {
-                    OutlinedButton(
-                        onClick = { showDeleteDialog = false }
-                    ) {
+                    OutlinedButton(onClick = { showDeleteDialog = false }) {
                         Text("Cancel")
                     }
                 }
@@ -177,10 +190,10 @@ fun EditBudgetScreen(
 fun EditBudgetForm(
     budget: com.example.expensetracker.domain.model.Budget,
     onUpdate: (com.example.expensetracker.domain.model.Budget) -> Unit,
+    onCancel: () -> Unit,
     isLoading: Boolean,
     modifier: Modifier = Modifier
 ) {
-    // Form state initialized with current budget values
     var category by remember { mutableStateOf(budget.category) }
     var amount by remember { mutableStateOf(budget.amount.toString()) }
     var period by remember { mutableStateOf(budget.period) }
@@ -190,16 +203,16 @@ fun EditBudgetForm(
 
     Column(
         modifier = modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
             .padding(16.dp)
-            .verticalScroll(rememberScrollState())
+            .verticalScroll(rememberScrollState()),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        // Reuse the same form components from AddBudgetScreen
         CategorySelectionCard(
             selectedCategory = category,
             onCategorySelected = { category = it }
         )
-
-        Spacer(modifier = Modifier.height(16.dp))
 
         BudgetDetailsCard(
             amount = amount,
@@ -210,8 +223,6 @@ fun EditBudgetForm(
             onActiveChange = { isActive = it }
         )
 
-        Spacer(modifier = Modifier.height(16.dp))
-
         NotificationsCard(
             notificationEnabled = notificationEnabled,
             onNotificationEnabledChange = { notificationEnabled = it },
@@ -219,16 +230,18 @@ fun EditBudgetForm(
             onAlertThresholdChange = { alertThreshold = it }
         )
 
-        Spacer(modifier = Modifier.height(32.dp))
+        Spacer(modifier = Modifier.height(8.dp))
 
-        // Action Buttons
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             OutlinedButton(
-                onClick = { /* Navigate back */ },
-                modifier = Modifier.weight(1f)
+                onClick = onCancel,
+                modifier = Modifier
+                    .weight(1.5f)
+                    .height(56.dp),
+                shape = RoundedCornerShape(16.dp)
             ) {
                 Text("Cancel")
             }
@@ -250,18 +263,27 @@ fun EditBudgetForm(
                         onUpdate(updatedBudget)
                     }
                 },
-                modifier = Modifier.weight(1f),
-                enabled = !isLoading && amount.isNotBlank() && amount.toDoubleOrNull() != null && amount.toDouble() > 0
+                modifier = Modifier
+                    .weight(2f)
+                    .height(56.dp),
+                shape = RoundedCornerShape(16.dp),
+                enabled = !isLoading && amount.isNotBlank() && amount.toDoubleOrNull() != null && amount.toDouble() > 0,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary
+                )
             ) {
                 if (isLoading) {
                     CircularProgressIndicator(
-                        modifier = Modifier.size(16.dp),
-                        strokeWidth = 2.dp
+                        modifier = Modifier.size(24.dp),
+                        strokeWidth = 2.5.dp,
+                        color = MaterialTheme.colorScheme.onPrimary
                     )
                 } else {
-                    Text("Update Budget")
+                    Text("Update", fontWeight = FontWeight.Bold)
                 }
             }
         }
+        
+        Spacer(modifier = Modifier.height(16.dp))
     }
 }

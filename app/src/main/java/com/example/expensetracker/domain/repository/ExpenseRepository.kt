@@ -17,8 +17,8 @@ interface ExpenseRepository {
     suspend fun insertExpense(expense: Expense)
     suspend fun updateExpense(expense: Expense)
     suspend fun deleteExpense(expense: Expense)
-    suspend fun getExpensesByDateRange(start: LocalDateTime, end: LocalDateTime): List<Expense>?
-    suspend fun getExpensesByCategory(category: ExpenseCategory): List<Expense>?
+    suspend fun getExpensesByDateRange(start: LocalDateTime, end: LocalDateTime): List<Expense>
+    suspend fun getExpensesByCategory(category: ExpenseCategory): List<Expense>
     suspend fun getMonthlySummary(month: Int, year: Int): MonthlySummary
 
 

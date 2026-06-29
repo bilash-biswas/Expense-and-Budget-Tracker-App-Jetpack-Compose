@@ -19,6 +19,7 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.withContext
 import java.time.DayOfWeek
 import java.time.Instant
@@ -37,7 +38,7 @@ class ExpenseRepositoryImpl @Inject constructor(
     override fun getExpenses(): Flow<List<Expense>> {
         return expenseDao.getExpenses().map { entities ->
             entities.map { it.toExpense() }
-        }
+        }.flowOn(dispatcher)
     }
 
     override suspend fun getExpenseById(id: Long): Expense? {
@@ -59,14 +60,14 @@ class ExpenseRepositoryImpl @Inject constructor(
     override suspend fun getExpensesByDateRange(
         start: LocalDateTime,
         end: LocalDateTime
-    ): List<Expense>? {
+    ): List<Expense> {
         return expenseDao.getExpensesByDateRange(
             start.toEpochMillis(),
             end.toEpochMillis()
         ).map { it.toExpense() }
     }
 
-    override suspend fun getExpensesByCategory(category: ExpenseCategory): List<Expense>? {
+    override suspend fun getExpensesByCategory(category: ExpenseCategory): List<Expense> {
         return expenseDao.getExpensesByCategory(category.name).map { it.toExpense() }
     }
 
@@ -110,39 +111,39 @@ class ExpenseRepositoryImpl @Inject constructor(
         endDate: LocalDateTime
     ): List<CategoryDistribution> {
         val expenses = getExpensesByDateRange(startDate, endDate)
-        val totalAmount = expenses?.sumOf { it.amount }
+        val totalAmount = expenses.sumOf { it.amount }
 
         return ExpenseCategory.entries.map { category ->
-            val categoryExpenses = expenses?.filter { it.category == category }
-            val categoryAmount = categoryExpenses?.sumOf { it.amount }
-            val percentage = totalAmount?.let { if (it > 0) (categoryAmount!! / totalAmount) * 100 else 0.0 }
+            val categoryExpenses = expenses.filter { it.category == category }
+            val categoryAmount = categoryExpenses.sumOf { it.amount }
+            val percentage = if (totalAmount > 0) (categoryAmount / totalAmount) * 100 else 0.0
 
             CategoryDistribution(
                 category = category,
-                amount = categoryAmount!!,
-                percentage = percentage!!,
+                amount = categoryAmount,
+                percentage = percentage,
                 count = categoryExpenses.size
             )
         }.filter { it.amount > 0 }
     }
 
     override suspend fun getMonthlyTrends(months: Int): List<MonthlyTrend> {
-        val calendar = Calendar.getInstance()
         val trends = mutableListOf<MonthlyTrend>()
+        val now = LocalDateTime.now()
 
-        repeat(months) { i->
-            calendar.add(Calendar.MONTH, -i)
-            val month = calendar.get(Calendar.MONTH) + 1
-            val year = calendar.get(Calendar.YEAR)
+        repeat(months) { i ->
+            val targetDate = now.minusMonths(i.toLong())
+            val month = targetDate.monthValue
+            val year = targetDate.year
 
             val monthStart = LocalDateTime.of(year, month, 1, 0, 0)
             val monthEnd = monthStart.plusMonths(1).minusSeconds(1)
 
             val monthlyExpenses = getExpensesByDateRange(monthStart, monthEnd)
-            val totalAmount = monthlyExpenses?.sumOf { it.amount }
+            val totalAmount = monthlyExpenses.sumOf { it.amount }
 
-            val dailySpending = monthlyExpenses?.groupBy { it.date.toLocalDate() }
-                ?.map { (date, expenses) ->
+            val dailySpending = monthlyExpenses.groupBy { it.date.toLocalDate() }
+                .map { (date, expenses) ->
                     DailySpending(
                         date = date.atStartOfDay(),
                         amount = expenses.sumOf { it.amount },
@@ -150,15 +151,15 @@ class ExpenseRepositoryImpl @Inject constructor(
                     )
                 }
 
-            val highestSpendingDay = dailySpending?.maxByOrNull { it.amount }
+            val highestSpendingDay = dailySpending.maxByOrNull { it.amount }
             val daysInMonth = YearMonth.of(year, month).lengthOfMonth()
-            val averageDailySpending = totalAmount?.div(daysInMonth)
+            val averageDailySpending = totalAmount / daysInMonth
 
             trends.add(MonthlyTrend(
                 month = monthStart.month.name.lowercase().replaceFirstChar { it.uppercase() },
                 year = year,
-                totalAmount = totalAmount!!,
-                averageDailySpending = averageDailySpending!!,
+                totalAmount = totalAmount,
+                averageDailySpending = averageDailySpending,
                 highestSpendingDay = highestSpendingDay
             ))
         }
@@ -169,25 +170,25 @@ class ExpenseRepositoryImpl @Inject constructor(
         val (startDate, endDate) = getDateRangeForTimeRange(timeRange)
         val expenses = getExpensesByDateRange(startDate, endDate)
 
-        val totalSpent = expenses?.sumOf { it.amount }
+        val totalSpent = expenses.sumOf { it.amount }
         val daysBetween = ChronoUnit.DAYS.between(startDate, endDate).toDouble()
-        val spendingVelocity = totalSpent?.div(daysBetween)
+        val spendingVelocity = totalSpent / daysBetween
 
-        val biggestExpense = expenses?.maxByOrNull { it.amount }
-        val mostFrequentCategory = expenses?.groupBy { it.category }
-            ?.maxByOrNull { it.value.size }?.key
+        val biggestExpense = expenses.maxByOrNull { it.amount }
+        val mostFrequentCategory = expenses.groupBy { it.category }
+            .maxByOrNull { it.value.size }?.key
 
-        val topExpenses = expenses?.sortedByDescending { it.amount }?.take(3)
-        val savingsPotential = topExpenses?.sumOf { it.amount }?.times(0.2)
-        val averageMonthlySpending = calculateAverageMonthlySpending(expenses!!)
+        val topExpenses = expenses.sortedByDescending { it.amount }.take(3)
+        val savingsPotential = topExpenses.sumOf { it.amount } * 0.2
+        val averageMonthlySpending = calculateAverageMonthlySpending(expenses)
 
         return SpendingInsights(
-            totalSpent = totalSpent!!,
+            totalSpent = totalSpent,
             averageMonthlySpending = averageMonthlySpending,
             biggestExpense = biggestExpense,
             mostFrequentCategory = mostFrequentCategory,
-            savingsPotential = savingsPotential!!,
-            spendingVelocity = spendingVelocity!!
+            savingsPotential = savingsPotential,
+            spendingVelocity = spendingVelocity
         )
     }
 
@@ -202,18 +203,18 @@ class ExpenseRepositoryImpl @Inject constructor(
             val weekEnd = weekStart.plusDays(6)
 
             val weeklyExpenses = getExpensesByDateRange(weekStart, weekEnd)
-            val totalAmount = weeklyExpenses?.sumOf { it.amount }
+            val totalAmount = weeklyExpenses.sumOf { it.amount }
 
             val dailyAverages = mutableMapOf<DayOfWeek, Double>()
             DayOfWeek.entries.forEach { day ->
-                val dayExpenses = weeklyExpenses?.filter { it.date.dayOfWeek == day }
-                dailyAverages[day] = dayExpenses?.sumOf { it.amount } as Double
+                val dayExpenses = weeklyExpenses.filter { it.date.dayOfWeek == day }
+                dailyAverages[day] = dayExpenses.sumOf { it.amount }
             }
 
             weeklyData.add(WeeklySpending(
                 weekStart = weekStart,
                 weekEnd = weekEnd,
-                totalAmount = totalAmount!!,
+                totalAmount = totalAmount,
                 dailyAverages = dailyAverages
             ))
         }

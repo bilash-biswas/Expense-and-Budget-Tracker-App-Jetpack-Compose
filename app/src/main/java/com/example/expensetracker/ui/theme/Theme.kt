@@ -17,23 +17,25 @@ import com.example.expensetracker.ui.theme.Typography
 private val DarkColorScheme = darkColorScheme(
     primary = Purple80,
     secondary = PurpleGrey80,
-    tertiary = Pink80
+    tertiary = Pink80,
+    background = Color(0xFF0F0E13),
+    surface = Color(0xFF16151B),
+    onPrimary = Color(0xFF381E72),
+    onSecondary = Color(0xFF332D41),
+    onBackground = Color(0xFFE6E1E5),
+    onSurface = Color(0xFFE6E1E5)
 )
 
 private val LightColorScheme = lightColorScheme(
-    primary = Purple40,
-    secondary = PurpleGrey40,
-    tertiary = Pink40
-
-    /* Other default colors to override
-    background = Color(0xFFFFFBFE),
-    surface = Color(0xFFFFFBFE),
+    primary = Color(0xFF6750A4),
+    secondary = Color(0xFF625B71),
+    tertiary = Color(0xFF7D5260),
+    background = Color(0xFFF9F9FC),
+    surface = Color(0xFFFFFFFF),
     onPrimary = Color.White,
     onSecondary = Color.White,
-    onTertiary = Color.White,
     onBackground = Color(0xFF1C1B1F),
-    onSurface = Color(0xFF1C1B1F),
-    */
+    onSurface = Color(0xFF1C1B1F)
 )
 
 @Composable
@@ -54,11 +56,7 @@ fun ExpenseTrackerTheme(
     }
 
     MaterialTheme(
-        colorScheme = lightColorScheme(
-            primary = Color(0xFF6750A4),
-            secondary = Color(0xFF625B71),
-            tertiary = Color(0xFF7D5260)
-        ),
+        colorScheme = colorScheme,
         typography = Typography(),
         content = content
     )

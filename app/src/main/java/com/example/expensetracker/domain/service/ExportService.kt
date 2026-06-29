@@ -26,13 +26,13 @@ class ExportService @Inject constructor(
         val expenses = expenseRepository.getExpensesByDateRange(startDate, endDate)
 
         val csvHeader = "Date,Title,Amount,Category,Notes,Recurring\n"
-        val csvRows = expenses?.joinToString("\n") { expense ->
+        val csvRows = expenses.joinToString("\n") { expense ->
             listOf(
                 expense.date.format(DateTimeFormatter.ISO_LOCAL_DATE),
                 escapeCsvField(expense.title),
                 expense.amount.toString(),
                 escapeCsvField(expense.category.displayName),
-                escapeCsvField(expense.notes ?: ""),
+                escapeCsvField(expense.notes),
                 expense.isRecurring.toString()
             ).joinToString(",")
         }
@@ -100,11 +100,11 @@ class ExportService @Inject constructor(
         yPosition += 30f
 
         // Summary
-        val totalAmount = expenses?.sumOf { it.amount }
+        val totalAmount = expenses.sumOf { it.amount }
         canvas.drawText("Total Expenses: $${"%.2f".format(totalAmount)}", 50f, yPosition, normalPaint)
         yPosition += 20f
 
-        canvas.drawText("Number of Expenses: ${expenses?.size}", 50f, yPosition, normalPaint)
+        canvas.drawText("Number of Expenses: ${expenses.size}", 50f, yPosition, normalPaint)
         yPosition += 40f
 
         // Expenses table header
@@ -133,7 +133,7 @@ class ExportService @Inject constructor(
             color = Color.BLACK
         }
 
-        expenses?.forEach { expense ->
+        expenses.forEach { expense ->
             if (yPosition > 800f) { // Start new page if needed
                 document.finishPage(page)
                 page = document.startPage(pageInfo)

@@ -1,6 +1,7 @@
 package com.example.expensetracker.presentation.screen
 
 import android.util.Log
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,16 +17,19 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import com.example.expensetracker.presentation.component.AnalyticsShimmer
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -48,65 +52,64 @@ fun AnalyticsScreen(
     val analyticsState by viewModel.analyticsState.collectAsState()
     val selectedTimeRange by viewModel.selectedTimeRange.collectAsState()
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp)
-    ) {
-        // Time Range Filter
-        Row (
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ){
-            Text("Analytics", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
-            TimeRangeFilter(
-                selectedTimeRange = selectedTimeRange,
-                onTimeRangeSelected = { viewModel.loadAnalyticsData(it) }
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Analytics", fontWeight = FontWeight.Bold) },
+                actions = {
+                    Box(modifier = Modifier.padding(end = 16.dp)) {
+                        TimeRangeFilter(
+                            selectedTimeRange = selectedTimeRange,
+                            onTimeRangeSelected = { viewModel.loadAnalyticsData(it) }
+                        )
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Color.Transparent
+                )
             )
         }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Analytics Content
-        if (analyticsState.isLoading) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .weight(1f),
-                contentAlignment = Alignment.Center
-            ) {
-                CircularProgressIndicator()
-            }
-        } else if (analyticsState.error != null) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .weight(1f),
-                contentAlignment = Alignment.Center
-            ) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally
+    ) { innerPadding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.background)
+                .padding(innerPadding)
+                .padding(horizontal = 16.dp, vertical = 8.dp)
+        ) {
+            // Analytics Content
+            if (analyticsState.isLoading) {
+                AnalyticsShimmer()
+            } else if (analyticsState.error != null) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .weight(1f),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                        text = "Error Loading Analytics",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.error
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = analyticsState.error ?: "Unknown error occurred",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            text = "Error Loading Analytics",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = analyticsState.error ?: "Unknown error occurred",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
+            } else {
+                AnalyticsContent(
+                    analyticsState = analyticsState,
+                    modifier = Modifier
+                        .weight(1f)
+                )
             }
-        } else {
-            AnalyticsContent(
-                analyticsState = analyticsState,
-                modifier = Modifier
-                    .weight(1f)
-            )
         }
     }
 }

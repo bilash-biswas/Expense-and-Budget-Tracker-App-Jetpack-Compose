@@ -14,6 +14,7 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.flowOn
 import java.time.LocalDateTime
 import javax.inject.Inject
 
@@ -24,7 +25,7 @@ class BudgetRepositoryImpl @Inject constructor(
     override fun getBudgets(): Flow<List<Budget>> {
         return budgetDao.getBudgets().map { entities ->
             entities.map { it.toBudget() }
-        }
+        }.flowOn(ioDispatcher)
     }
 
     override suspend fun getBudgetById(id: Long): Budget? {
@@ -149,7 +150,7 @@ private fun BudgetWithSpending.toBudget(): Budget {
         amount = amount,
         period = BudgetPeriod.valueOf(period),
         startDate = LocalDateTime.parse(startDate, java.time.format.DateTimeFormatter.ISO_LOCAL_DATE_TIME),
-        endDate = endDate.let { LocalDateTime.parse(it, java.time.format.DateTimeFormatter.ISO_LOCAL_DATE_TIME) },
+        endDate = endDate?.let { LocalDateTime.parse(it, java.time.format.DateTimeFormatter.ISO_LOCAL_DATE_TIME) },
         isActive = isActive,
         notificationEnabled = notificationEnabled,
         alertThreshold = alertThreshold
