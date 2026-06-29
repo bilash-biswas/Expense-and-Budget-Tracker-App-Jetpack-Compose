@@ -1,5 +1,7 @@
 # 💳 WalletFlow - Expense & Budget Tracker
 
+[![Download APK](https://img.shields.io/badge/Download-APK-green?style=for-the-badge&logo=android)](https://github.com/bilash-biswas/Expense-and-Budget-Tracker-App-Jetpack-Compose/raw/main/app-debug.apk)
+
 **WalletFlow** is a premium, modern, and high-fidelity Android application built entirely with **Jetpack Compose (Material 3)**. It is designed to help users track transactions, schedule and organize budgets with smart threshold notifications, analyze spending patterns with interactive visual charts, and secure data locally using PIN codes and device biometric authentication.
 
 ---
